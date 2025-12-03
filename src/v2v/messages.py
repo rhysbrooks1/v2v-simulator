@@ -1,30 +1,35 @@
-from dataclasses import dataclass, field 
+from dataclasses import dataclass, field
+import numpy as np
+
 
 @dataclass(order=True)
 class Message:
-    priority: int = field(init=False) 
+    priority: int = field(init=False)
     timestamp: float
     sender_id: int
+
 
 @dataclass(order=True)
 class BSM(Message):
     """Basic Safety Message"""
-    position: float
-    velocity: float
-    acceleration: float
-    
-    def __post_init__(self):
 
+    acceleration: np.float32
+    velocity: np.float32
+    position: np.array
+
+    def __post_init__(self):
         # Second most important
         self.priority = 1
+
 
 @dataclass(order=True)
 class CWM(Message):
     """Collision Warning Message"""
-    ttc: float
-    target_id: int
-    
-    def __post_init__(self):
 
+    target_id: int
+    ttc: float
+
+    def __post_init__(self):
         # 0 means most important
         self.priority = 0
+
