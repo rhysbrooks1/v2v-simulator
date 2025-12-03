@@ -1,4 +1,3 @@
-import pygame as pg
 import OpenGL.GL as gl
 from OpenGL.GL import shaders
 from pyglm import glm
@@ -73,15 +72,6 @@ void main()
 
 class SpriteRenderer:
     def __init__(self, window_width, window_height):
-        # request OpenGL 3.3
-        pg.display.gl_set_attribute(pg.GL_CONTEXT_MAJOR_VERSION, 3)
-        pg.display.gl_set_attribute(pg.GL_CONTEXT_MINOR_VERSION, 3)
-        pg.display.gl_set_attribute(
-            pg.GL_CONTEXT_PROFILE_MASK, pg.GL_CONTEXT_PROFILE_CORE
-        )
-
-        pg.display.set_mode((window_width, window_height), pg.DOUBLEBUF | pg.OPENGL)
-
         # The OpenGL code here is adapted from these learnopengl resources:
         # - https://learnopengl.com/code_viewer_gh.php?code=src/1.getting_started/4.1.textures/textures.cpp
         # - https://learnopengl.com/code_viewer_gh.php?code=src/1.getting_started/5.1.transformations/transformations.cpp
@@ -176,7 +166,7 @@ class SpriteRenderer:
             glm.vec3(
                 float(sprite_width) * scale[0],
                 float(sprite_height) * scale[1],
-                0.0,
+                1.0,
             ),
         )
 
