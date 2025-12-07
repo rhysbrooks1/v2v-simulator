@@ -1,70 +1,121 @@
-from dataclasses import dataclass
-from vehicle import Vehicle
-import vehicle
-import numpy as np
 import random
+from dataclasses import dataclass
+from typing import List
 
+import numpy as np
 
-def create_highway(num_vehicles, height, width):
-    vehicles = []
-
-    lanes = 5.0
-    lane_offset = -(float(width) / 2.0) + vehicle.VEHICLE_WIDTH / 2.0
-    lane_spacing = float(width) / lanes
-
-    # Group vehicles by lane
-    lane_groups = [[] for _ in range(int(lanes))]
-    for i in range(num_vehicles):
-        lane_idx = random.randint(0, int(lanes) - 1)
-        lane_groups[lane_idx].append(i)
-
-    SAFE_VEHICLE_HEIGHT = 120.0
-
-    # Place each lane independently
-    for lane_idx, vehicle_ids in enumerate(lane_groups):
-        count = len(vehicle_ids)
-        if count == 0:
-            continue
-
-        slot_height = height / count
-        wiggle_room = slot_height - SAFE_VEHICLE_HEIGHT
-        max_jitter = max(wiggle_room, 0.0) / 2.0
-
-        for j, vid in enumerate(vehicle_ids):
-            slot_center = (j * slot_height) + (slot_height / 2.0)
-            jitter = random.uniform(-max_jitter, max_jitter)
-
-            y_raw = slot_center + jitter
-            y_pos = y_raw - (height / 2.0)
-
-            x_pos = lane_idx * lane_spacing + lane_offset
-            position = np.array([x_pos, y_pos], dtype=np.float32)
-
-            velocity = random.uniform(
-                vehicle.MAX_VELOCITY / 2.0,
-                vehicle.MAX_VELOCITY
-            )
-
-            vehicles.append(
-                Vehicle(
-                    vid,
-                    0.0,
-                    velocity,
-                    position,
-                )
-            )
-
-    return Highway(vehicles, height)
+import vehicle
 
 
 @dataclass
 class Highway:
-    vehicles: list[Vehicle]
-    height: np.float32
+    vehicles: List[vehicle.Vehicle]
+    height: float  # world height in same units as vehicle positions
 
-    def update(self, dt):
+    def update(self, dt: float) -> None:
+        """
+        Advance all vehicles. When one drives off the bottom of the screen,
+        respawn it just above the top (very quickly) in a different lane
+        when possible, with fresh high-speed settings.
+        """
         half_height = self.height / 2.0
+
+        # unique lane x positions for respawn
+        lane_xs = sorted({float(car.position[0]) for car in self.vehicles})
+
         for v in self.vehicles:
-            v.update(dt)
-            if v.position[1] > half_height:
-                v.position[1] = -half_height
+            # normal physics integration
+            v.update(np.float32(dt))
+
+            # VERY fast respawn: as soon as car is just below the bottom
+            if v.position[1] > half_height + vehicle.VEHICLE_LENGTH * 0.1:
+                old_x = float(v.position[0])
+
+                # pick a lane different from previous, if possible
+                if lane_xs:
+                    other_lanes = [x for x in lane_xs if abs(x - old_x) > 1e-3]
+                    if other_lanes:
+                        v.position[0] = random.choice(other_lanes)
+                    else:
+                        v.position[0] = old_x  # only one lane
+
+                # respawn just above the top with tiny random offset
+                v.position[1] = -half_height - vehicle.VEHICLE_LENGTH * 0.2 - \
+                                random.uniform(0.0, vehicle.VEHICLE_LENGTH * 0.2)
+
+                # fresh, fairly high speed and desired speed
+                v.velocity = np.float32(
+                    random.uniform(
+                        vehicle.MAX_VELOCITY * 0.6,   # start fairly fast
+                        vehicle.MAX_VELOCITY * 0.95,  # just under max
+                    )
+                )
+                if hasattr(v, "desired_speed"):
+                    v.desired_speed = random.uniform(
+                        vehicle.MAX_VELOCITY * 0.85,  # wants to cruise high
+                        vehicle.MAX_VELOCITY,         # up near max speed
+                    )
+
+
+def create_highway(
+    num_vehicles: int,
+    height: float,
+    half_window_width: float,
+) -> Highway:
+    """
+    Construct a highway with a fixed number of lanes and vehicles.
+
+    :param num_vehicles: how many vehicles total
+    :param height: world/viewport height (same as window_height in main)
+    :param half_window_width: window_width / 2 from main.py, used to center lanes
+    """
+    vehicles: List[vehicle.Vehicle] = []
+
+    # -------- LANE LAYOUT: VERY CLOSE LANES IN CENTER --------
+    num_lanes = 4
+    road_width = half_window_width * 1.5
+
+    # pack lanes into the central 40% of the window → very close together
+    center_width = road_width * 0.4
+    margin = (road_width - center_width) / 2.0
+    usable_width = max(center_width, 1.0)
+
+    if num_lanes == 1:
+        lane_xs = [0.0]
+    else:
+        lane_spacing = usable_width / (num_lanes - 1)
+        lane_xs = [
+            -half_window_width + margin + lane_idx * lane_spacing
+            for lane_idx in range(num_lanes)
+        ]
+
+    half_height = height / 2.0
+
+    for vid in range(num_vehicles):
+        lane_idx = vid % num_lanes
+        x_pos = lane_xs[lane_idx]
+
+        # random vertical placement along the road
+        y_pos = random.uniform(-half_height, half_height)
+        position = np.array([x_pos, y_pos], dtype=np.float32)
+
+        # start fairly fast, want to cruise near max speed
+        init_velocity = random.uniform(
+            vehicle.MAX_VELOCITY * 0.6,   # 60% of max
+            vehicle.MAX_VELOCITY * 0.95,  # close to max
+        )
+        desired = random.uniform(
+            vehicle.MAX_VELOCITY * 0.85,  # 85% of max
+            vehicle.MAX_VELOCITY,         # up to max
+        )
+
+        v = vehicle.Vehicle(
+            vid=vid,
+            acceleration=np.float32(0.0),
+            velocity=np.float32(init_velocity),
+            position=position,
+            desired_speed=desired,
+        )
+        vehicles.append(v)
+
+    return Highway(vehicles=vehicles, height=height)
