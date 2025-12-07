@@ -15,12 +15,20 @@ def sine_in_out(t):
 def lerp(start, end, t):
     return np.float32(start * (np.float32(1.0) - t) + end * t)
 
+
+def dist(src, target):
+    origin = [0.0, 0.0]
+    origin[0] = src[0] - target[0]
+    origin[1] = src[1] - target[1]
+    return math.sqrt((origin[0] * origin[0]) + (origin[1] * origin[1]))
+
+
 def main():
     # Statistics
     bsm_count = 0
     cwm_count = 0
-    packet_loss = 1.5    # pretend 1.5% loss
-    avg_latency = 8.0    # fake latency in ms
+    packet_loss = 1.5  # pretend 1.5% loss
+    avg_latency = 8.0  # fake latency in ms
 
     window_width = 1280
     window_height = 720
@@ -55,7 +63,6 @@ def main():
             running = False
         highway.update(dt)
 
-
         ########## Collect stats ###################
         vehicle_states = []
         for i, v in enumerate(highway.vehicles):
@@ -66,8 +73,12 @@ def main():
             ttc = float("inf")
             warning = False
             for j, other in enumerate(highway.vehicles):
-                if i == j: continue
-                if abs(other.position[0] - v.position[0]) < 1e-3 and other.position[1] > v.position[1]:
+                if i == j:
+                    continue
+                if (
+                    abs(other.position[0] - v.position[0]) < 1e-3
+                    and other.position[1] > v.position[1]
+                ):
                     if v.velocity > other.velocity:
                         rel_speed = v.velocity - other.velocity
                         ttc = (other.position[1] - v.position[1]) / rel_speed
@@ -76,7 +87,16 @@ def main():
                             cwm_count += 1
                     break
             bsm_count += 1
-            vehicle_states.append({"id": v.vid, "speed": round(speed,1), "x": x, "y": y, "ttc": ttc, "warning": warning})
+            vehicle_states.append(
+                {
+                    "id": v.vid,
+                    "speed": round(speed, 1),
+                    "x": x,
+                    "y": y,
+                    "ttc": ttc,
+                    "warning": warning,
+                }
+            )
 
         stats = {
             "vehicles": len(highway.vehicles),
@@ -95,29 +115,61 @@ def main():
         connected_set = set([])
         points = np.array([], dtype=np.float32)
         for i, vehicle in enumerate(highway.vehicles):
-            vehicle_translation = [vehicle.position[0], vehicle.position[1], 0.0]
+            vehicle_position = [
+                vehicle.position[0],
+                vehicle.position[1],
+                np.float32(0.0),
+            ]
             sprite_renderer.render(
                 sprite,
                 width,
                 height,
-                translation=vehicle_translation,
+                translation=vehicle_position,
                 scale=[2.0, 2.0],
             )
-            # for j, other_vehicle in enumerate(highway.vehicles):
-            #     if i != j and (i, j) not in connected_set:
-            #         other_vehicle_translation = [
-            #             other_vehicle.position.x,
-            #             other_vehicle.position.y,
-            #             0.0,
-            #         ]
-            #         connected_set.add((i, j))
-            #         connected_set.add((j, i))
-            #         points = np.append(
-            #             points, [vehicle_translation, other_vehicle_translation]
-            #         )
+            for j, other_vehicle in enumerate(highway.vehicles):
+                if i != j and (i, j) not in connected_set:
+                    if (
+                        dist(
+                            vehicle.position,
+                            other_vehicle.position,
+                        )
+                        > 300.0
+                    ):
+                        continue
+
+                    other_vehicle_position = [
+                        other_vehicle.position[0],
+                        other_vehicle.position[1],
+                        np.float32(0.0),
+                    ]
+                    connected_set.add((i, j))
+                    connected_set.add((j, i))
+                    points = np.append(
+                        points, [vehicle_position, other_vehicle_position]
+                    )
 
         # communication lines
         line_renderer.render_lines(points)
+
+        # vehicle velocities
+        velocity_points = np.array([], dtype=np.float32)
+        for vehicle in highway.vehicles:
+            vy = vehicle.velocity
+            positions = vehicle.position
+            velocity_points = np.append(
+                velocity_points,
+                [
+                    positions[0],
+                    positions[1],
+                    np.float32(0.0),
+                    positions[0],
+                    positions[1] + vy * 2.0,
+                    np.float32(0.0),
+                ],
+            )
+
+        line_renderer.render_arrows(velocity_points, color=[0.0, 1.0, 0.0, 1.0])
 
         # Draw stats panel as OpenGL textures
         draw_stats_panel(stats, window_width, window_height)

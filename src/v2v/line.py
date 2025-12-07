@@ -59,6 +59,14 @@ class LineRenderer:
             -1.0,
             1.0,
         )
+        gl.glUseProgram(self.sprite_shader)
+        gl.glUniformMatrix4fv(
+            gl.glGetUniformLocation(self.sprite_shader, "proj_matrix"),
+            1,
+            gl.GL_FALSE,
+            glm.value_ptr(self.proj_matrix),
+        )
+        gl.glUseProgram(0)
 
     def render_lines(
         self,
@@ -83,13 +91,6 @@ class LineRenderer:
             glm.value_ptr(identity),
         )
 
-        gl.glUniformMatrix4fv(
-            gl.glGetUniformLocation(self.sprite_shader, "proj_matrix"),
-            1,
-            gl.GL_FALSE,
-            glm.value_ptr(self.proj_matrix),
-        )
-
         gl.glUniform4f(
             gl.glGetUniformLocation(self.sprite_shader, "color"),
             color[0],
@@ -99,7 +100,7 @@ class LineRenderer:
         )
 
         gl.glLineWidth(3.0)
-        gl.glDrawArrays(gl.GL_LINES, 0, 2)
+        gl.glDrawArrays(gl.GL_LINES, 0, len(points) // 3)
 
     def render_arrows(
         self,
