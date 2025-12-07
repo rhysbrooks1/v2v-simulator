@@ -1,5 +1,4 @@
 import math
-from dataclasses import dataclass
 from typing import List, Dict
 
 import numpy as np
@@ -8,54 +7,34 @@ import OpenGL.GL as gl
 
 import highway
 import vehicle
+from messages import CWM, BSM
 from sprite import SpriteRenderer, load_sprite
+from emitter import EmitterRenderer
 from line import LineRenderer
 from ui_statistics import draw_stats_panel
 
 
-# ----------------- message types ----------------- #
-
-@dataclass
-class BasicSafetyMessage:
-    sender: int
-    x: float
-    y: float
-    speed: float
-
-
-@dataclass
-class CollisionWarningMessage:
-    sender: int
-    x: float
-    y: float
-    ttc: float
-
-
-# ----------------- helpers ----------------- #
-
 def dist(src, target) -> float:
-    """Euclidean distance between two 2D points."""
     dx = float(src[0]) - float(target[0])
     dy = float(src[1]) - float(target[1])
     return math.sqrt(dx * dx + dy * dy)
 
 
-# ----------------- main entry ----------------- #
-
 def main() -> None:
-    # ---- stats + constants ----
     bsm_count = 0
     cwm_count = 0
     packet_loss = 1.5
     avg_latency = 8.0
     sim_time = 0.0
 
-    SAFE_DIST = vehicle.VEHICLE_LENGTH * 0.6  # min following gap (center-to-center)
-    TTC_THRESHOLD = 3.0                       # seconds to collision
+    SAFE_DIST = vehicle.VEHICLE_LENGTH * 0.6
+    TTC_THRESHOLD = 3.0
 
-    # scripted “slow leader” events to create repeated collision scenarios
     event_timer = 0.0
-    EVENT_INTERVAL = 5.0  # seconds between forced events
+    EVENT_INTERVAL = 5.0
+
+    message_freq = 1.0 / 10.0
+    freq_accumulator = 0.0
 
     window_width = 1280
     window_height = 720
@@ -64,14 +43,12 @@ def main() -> None:
     clock = pg.time.Clock()
     running = True
 
-    # ---- build highway + vehicles ----
     road = highway.create_highway(
         num_vehicles=12,
         height=window_height,
         half_window_width=window_width / 2.0,
     )
 
-    # ---- OpenGL / window setup ----
     pg.display.gl_set_attribute(pg.GL_CONTEXT_MAJOR_VERSION, 3)
     pg.display.gl_set_attribute(pg.GL_CONTEXT_MINOR_VERSION, 3)
     pg.display.gl_set_attribute(
@@ -85,19 +62,18 @@ def main() -> None:
 
     line_renderer = LineRenderer(window_width, window_height)
     sprite_renderer = SpriteRenderer(window_width, window_height)
+    emitter_renderer = EmitterRenderer(window_width, window_height)
     sprite, car_w, car_h = load_sprite("cars/manual.png")
 
-    # --------------- main loop --------------- #
     while running:
         dt = float(clock.tick(60)) / 1_000.0
         sim_time += dt
 
-        # ---- scripted events to create new collisions over time ----
         event_timer += dt
         if event_timer > EVENT_INTERVAL:
             event_timer = 0.0
 
-            # group cars by lane (x position)
+            # group cars by lane 
             lanes_for_event: Dict[float, List[vehicle.Vehicle]] = {}
             for car in road.vehicles:
                 lane_x = float(car.position[0])
@@ -120,11 +96,9 @@ def main() -> None:
                         leader.velocity,
                         leader.desired_speed,
                     )
-                    print(f"DEBUG: scripted slow leader {leader.vid} "
-                          f"in lane {lane_x}")
+                    print(f"DEBUG: scripted slow leader {leader.vid} in lane {lane_x}")
                     break
 
-        # ---- input ----
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 running = False
@@ -133,10 +107,8 @@ def main() -> None:
         if keys[pg.K_ESCAPE]:
             running = False
 
-        # ---- simulation update (positions only) ----
-        road.update(dt)   # Highway.update already calls v.update(dt)
+        road.update(dt)
 
-        # ---- messaging + collision avoidance ----
         messages: List[object] = []
         vehicle_states = []
 
@@ -147,7 +119,7 @@ def main() -> None:
 
             # always send BSM
             messages.append(
-                BasicSafetyMessage(
+                BSM(
                     sender=v.vid,
                     x=x,
                     y=y,
@@ -172,7 +144,6 @@ def main() -> None:
 
                 gap = other.position[1] - v.position[1]
 
-                # ---------- HARD SAFETY DISTANCE ----------
                 if gap <= 0.0 or gap < SAFE_DIST:
                     # snap follower back to just behind leader
                     v.position[1] = other.position[1] - SAFE_DIST
@@ -187,7 +158,7 @@ def main() -> None:
 
                     cwm_count += 1
                     messages.append(
-                        CollisionWarningMessage(
+                        CWM(
                             sender=v.vid,
                             x=x,
                             y=y,
@@ -209,7 +180,6 @@ def main() -> None:
                     ttc = 0.0
                     break
 
-                # ---------- TTC-based warning ----------
                 if v.velocity > other.velocity:
                     rel_speed = v.velocity - other.velocity
                     ttc = gap / max(rel_speed, 1e-3)
@@ -218,7 +188,7 @@ def main() -> None:
                         warning = True
                         cwm_count += 1
                         messages.append(
-                            CollisionWarningMessage(
+                            CWM(
                                 sender=v.vid,
                                 x=x,
                                 y=y,
@@ -244,7 +214,6 @@ def main() -> None:
                     # only closest car ahead matters
                     break
 
-            # ---------- normal driving when NOT in danger ----------
             if not warning:
                 if v.velocity < v.desired_speed - 0.5:
                     v.acceleration = vehicle.MAX_ACCEL * 0.5
@@ -253,7 +222,6 @@ def main() -> None:
                 else:
                     v.acceleration = 0.0
 
-            # Always give UI a numeric TTC (never None)
             ttc_for_ui = ttc if ttc != float("inf") else 999.9
 
             vehicle_states.append(
@@ -267,7 +235,6 @@ def main() -> None:
                 }
             )
 
-        # ---------- final spacing pass per lane to prevent overlap ----------
         lanes: Dict[float, List[vehicle.Vehicle]] = {}
         for car in road.vehicles:
             lane_x = float(car.position[0])
@@ -293,7 +260,6 @@ def main() -> None:
                             vehicle.MAX_DECEL * 0.5,
                         )
 
-        # ---- stats for UI ----
         elapsed = max(sim_time, 1e-3)
         bsm_rate = bsm_count / elapsed
         stats = {
@@ -305,14 +271,20 @@ def main() -> None:
             "vehicle_states": vehicle_states,
         }
 
-        # ---- render ----
+        # render
         gl.glClearColor(0.1, 0.1, 0.1, 1.0)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
-        # ---------- draw vehicle sprites + build comm lines (same as main2.py) ----------
+        # TODO: sync these to the emission rate
+        freq_accumulator += dt
+        if freq_accumulator > message_freq:
+            freq_accumulator -= message_freq
+            for veh in road.vehicles:
+                emitter_renderer.add_instance(200.0, veh.position[0], veh.position[1])
+        emitter_renderer.render()
+
         connected_set = set()
         comm_points = np.array([], dtype=np.float32)
-
         for i, veh in enumerate(road.vehicles):
             veh_pos3 = [
                 float(veh.position[0]),
@@ -320,7 +292,6 @@ def main() -> None:
                 np.float32(0.0),
             ]
 
-            # draw sprite
             sprite_renderer.render(
                 sprite,
                 car_w,
@@ -329,7 +300,6 @@ def main() -> None:
                 scale=[2.0, 2.0],
             )
 
-            # build communication links exactly like main2.py
             for j, other in enumerate(road.vehicles):
                 if i != j and (i, j) not in connected_set:
                     if dist(veh.position, other.position) > 300.0:
@@ -342,18 +312,14 @@ def main() -> None:
                     ]
                     connected_set.add((i, j))
                     connected_set.add((j, i))
-                    comm_points = np.append(
-                        comm_points, [veh_pos3, other_pos3]
-                    )
+                    comm_points = np.append(comm_points, [veh_pos3, other_pos3])
 
-        # --- communication lines (white) ---
         if comm_points.size > 0:
             line_renderer.render_lines(
                 comm_points.astype(np.float32),
                 color=[1.0, 1.0, 1.0, 1.0],
             )
 
-        # --- velocity arrows (green) ---
         velocity_points = np.array([], dtype=np.float32)
         for veh in road.vehicles:
             vy = float(veh.velocity)
@@ -362,8 +328,12 @@ def main() -> None:
             velocity_points = np.append(
                 velocity_points,
                 [
-                    x0, y0, 0.0,
-                    x0, y0 + vy * 2.0, 0.0,
+                    x0,
+                    y0,
+                    0.0,
+                    x0,
+                    y0 + vy * 2.0,
+                    0.0,
                 ],
             )
 
@@ -373,7 +343,6 @@ def main() -> None:
                 color=[0.0, 1.0, 0.0, 1.0],
             )
 
-        # stats panel
         draw_stats_panel(stats, window_width, window_height)
 
         pg.display.flip()
