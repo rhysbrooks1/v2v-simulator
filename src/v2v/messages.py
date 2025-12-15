@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass
 class BSM:
     sender: int
@@ -11,6 +12,4 @@ class BSM:
 @dataclass
 class CWM:
     sender: int
-    x: float
-    y: float
     ttc: float

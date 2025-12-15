@@ -130,14 +130,10 @@ class LineRenderer:
 
         for i in range(0, len(points), 6):
             chunk = points[i:i+6]
-            source = glm.vec3(chunk[0], chunk[1], chunk[2])
             target = glm.vec3(chunk[3], chunk[4], chunk[5])
-            to_target = target - source
-            rotation = math.atan2(to_target.y, to_target.x) - math.pi / 2.0
 
             model_matrix = glm.identity(glm.mat4x4)
             model_matrix = glm.translate(model_matrix, target)
-            model_matrix = glm.rotate(model_matrix, rotation, glm.vec3(0.0, 0.0, 1.0))
             scale = 40.0
             model_matrix = glm.scale(
                 model_matrix,

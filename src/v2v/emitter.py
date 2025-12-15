@@ -32,6 +32,7 @@ void main() {
 class Instance:
     start_time: float
     scale: float
+    color: list
     x: np.float32
     y: np.float32
 
@@ -64,7 +65,7 @@ class EmitterRenderer:
             angle = 2.0 * np.pi * i / self.segments
             x = np.cos(angle)
             y = np.sin(angle)
-            vertices.extend([x, y])
+            vertices.extend([x * 0.5, y * 0.5])
 
         vertex_data = np.array(vertices, dtype=np.float32)
         gl.glBindVertexArray(self.vao)
@@ -96,9 +97,9 @@ class EmitterRenderer:
             1.0,
         )
 
-    def add_instance(self, scale, x, y):
+    def add_instance(self, scale, color, x, y):
         start_time = time.time()
-        new_instance = Instance(start_time, scale, x, y)
+        new_instance = Instance(start_time, scale, color, x, y)
         self.active_instances.append(new_instance)
 
     def render(self):
@@ -149,7 +150,9 @@ class EmitterRenderer:
 
             gl.glUniform1f(self.loc_scale, current_scale)
             gl.glUniform1f(self.loc_alpha, current_alpha)
-            gl.glUniform3f(self.loc_color, 0.2, 0.2, 0.2)
+            gl.glUniform3f(
+                self.loc_color, instance.color[0], instance.color[1], instance.color[2]
+            )
 
             gl.glBindVertexArray(self.vao)
             gl.glDrawArrays(gl.GL_LINE_LOOP, 0, self.segments)

@@ -40,20 +40,23 @@ class Highway:
                         v.position[0] = old_x  # only one lane
 
                 # respawn just above the top with tiny random offset
-                v.position[1] = -half_height - vehicle.VEHICLE_LENGTH * 0.2 - \
-                                random.uniform(0.0, vehicle.VEHICLE_LENGTH * 0.2)
+                v.position[1] = (
+                    -half_height
+                    - vehicle.VEHICLE_LENGTH * 0.2
+                    - random.uniform(0.0, vehicle.VEHICLE_LENGTH * 0.2)
+                )
 
                 # fresh, fairly high speed and desired speed
                 v.velocity = np.float32(
                     random.uniform(
-                        vehicle.MAX_VELOCITY * 0.6,   # start fairly fast
+                        vehicle.MAX_VELOCITY * 0.6,  # start fairly fast
                         vehicle.MAX_VELOCITY * 0.95,  # just under max
                     )
                 )
                 if hasattr(v, "desired_speed"):
                     v.desired_speed = random.uniform(
                         vehicle.MAX_VELOCITY * 0.85,  # wants to cruise high
-                        vehicle.MAX_VELOCITY,         # up near max speed
+                        vehicle.MAX_VELOCITY,  # up near max speed
                     )
 
 
@@ -99,22 +102,20 @@ def create_highway(
         y_pos = random.uniform(-half_height, half_height)
         position = np.array([x_pos, y_pos], dtype=np.float32)
 
+        max_velocity = np.float32(random.uniform(90.0, 110.0))
         # start fairly fast, want to cruise near max speed
         init_velocity = random.uniform(
-            vehicle.MAX_VELOCITY * 0.6,   # 60% of max
-            vehicle.MAX_VELOCITY * 0.95,  # close to max
-        )
-        desired = random.uniform(
-            vehicle.MAX_VELOCITY * 0.85,  # 85% of max
-            vehicle.MAX_VELOCITY,         # up to max
+            max_velocity * 0.6,
+            max_velocity * 0.95,
         )
 
         v = vehicle.Vehicle(
             vid=vid,
             acceleration=np.float32(0.0),
             velocity=np.float32(init_velocity),
+            max_velocity=max_velocity,
             position=position,
-            desired_speed=desired,
+            bsm_phase=random.uniform(0.0, 1.0),
         )
         vehicles.append(v)
 

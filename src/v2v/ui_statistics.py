@@ -1,31 +1,44 @@
 import pygame
 import OpenGL.GL as gl
-from sprite import SpriteRenderer, load_sprite  # reuse your SpriteRenderer
-from pyglm import glm
+from sprite import SpriteRenderer
 
 text_renderer = None  # global renderer
 
 ### MOVE TEXT BOX ###
 DEFAULT_FONT_SIZE = 12
-MOVE_HORIZONTALY = 125
+MOVE_HORIZONTALLY = 125
 MOVE_VERTICALLY = 150
+
 
 def init_text_renderer(window_width, window_height):
     global text_renderer
     text_renderer = SpriteRenderer(window_width, window_height)
 
-def create_text_texture(text, font_size=14, color=(255,255,255)):
+
+def create_text_texture(text, font_size=14, color=(255, 255, 255)):
     font = pygame.font.SysFont("consolas", font_size)
     surf = font.render(text, True, color)
-    
+
     tex = gl.glGenTextures(1)
     gl.glBindTexture(gl.GL_TEXTURE_2D, tex)
     gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
     gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
-    image = pygame.image.tostring(surf, "RGBA", True)  # True flips rows for OpenGL automatically
-    gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, surf.get_width(), surf.get_height(),
-                    0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, image)
+    image = pygame.image.tostring(
+        surf, "RGBA", True
+    )  # True flips rows for OpenGL automatically
+    gl.glTexImage2D(
+        gl.GL_TEXTURE_2D,
+        0,
+        gl.GL_RGBA,
+        surf.get_width(),
+        surf.get_height(),
+        0,
+        gl.GL_RGBA,
+        gl.GL_UNSIGNED_BYTE,
+        image,
+    )
     return tex, surf.get_width(), surf.get_height()
+
 
 def draw_stats_panel(stats, window_width, window_height, col_count=2):
     global text_renderer
@@ -33,8 +46,10 @@ def draw_stats_panel(stats, window_width, window_height, col_count=2):
         init_text_renderer(window_width, window_height)
 
     panel_width = 300
-    panel_x = -window_width/2 + window_width - panel_width + MOVE_HORIZONTALY    # MOVE HORIZONTALY
-    y_top = window_height / 2 - MOVE_VERTICALLY                                 # MOVE VERTICALLY
+    panel_x = (
+        -window_width / 2 + window_width - panel_width + MOVE_HORIZONTALLY
+    )  # MOVE HORIZONTALLY
+    y_top = window_height / 2 - MOVE_VERTICALLY  # MOVE VERTICALLY
 
     lines_static = [
         "=== STATISTICS ===",
@@ -50,10 +65,10 @@ def draw_stats_panel(stats, window_width, window_height, col_count=2):
     # Draw static lines first
     y_offset = 0
     for line in lines_static:
-        tex, w, h = create_text_texture(line, font_size=12, color=(255,255,255))
+        tex, w, h = create_text_texture(line, font_size=12, color=(255, 255, 255))
         x_gl = panel_x
         y_gl = y_top - y_offset
-        text_renderer.render(tex, w, h, translation=[x_gl, y_gl, 0], scale=[1.0,1.0])
+        text_renderer.render(tex, w, h, translation=[x_gl, y_gl, 0], scale=[1.0, 1.0])
         gl.glDeleteTextures([tex])
         y_offset += h + 2
 
@@ -73,10 +88,14 @@ def draw_stats_panel(stats, window_width, window_height, col_count=2):
         lines = [
             f"ID {v['id']} | {v['speed']} m/s",
             f"Pos: ({int(v['x'])}, {int(v['y'])})",
-            f"TTC: {v['ttc']:.1f}  Warn:{v['warning']}"
         ]
         for i, line in enumerate(lines):
-            tex, w, h = create_text_texture(line, font_size=12, color=(255,255,255))
-            text_renderer.render(tex, w, h, translation=[x_offset, y_top - y_offset_vehicle - i * row_height, 0], scale=[1.0,1.0])
+            tex, w, h = create_text_texture(line, font_size=12, color=(255, 255, 255))
+            text_renderer.render(
+                tex,
+                w,
+                h,
+                translation=[x_offset, y_top - y_offset_vehicle - i * row_height, 0],
+                scale=[1.0, 1.0],
+            )
             gl.glDeleteTextures([tex])
-
