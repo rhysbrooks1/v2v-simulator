@@ -5,8 +5,8 @@ import numpy as np
 import math
 import random
 
-MAX_ACCEL = 50.0
-MAX_DECEL = -30.0
+MAX_ACCEL = 90.0
+MAX_DECEL = -70.0
 VEHICLE_LENGTH = 260.0
 VEHICLE_WIDTH = 130.0
 

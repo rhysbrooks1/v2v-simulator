@@ -10,54 +10,7 @@ import vehicle
 @dataclass
 class Highway:
     vehicles: List[vehicle.Vehicle]
-    height: float  # world height in same units as vehicle positions
-
-    def update(self, dt: float) -> None:
-        """
-        Advance all vehicles. When one drives off the bottom of the screen,
-        respawn it just above the top (very quickly) in a different lane
-        when possible, with fresh high-speed settings.
-        """
-        half_height = self.height / 2.0
-
-        # unique lane x positions for respawn
-        lane_xs = sorted({float(car.position[0]) for car in self.vehicles})
-
-        for v in self.vehicles:
-            # normal physics integration
-            v.update(np.float32(dt))
-
-            # VERY fast respawn: as soon as car is just below the bottom
-            if v.position[1] > half_height + vehicle.VEHICLE_LENGTH * 0.1:
-                old_x = float(v.position[0])
-
-                # pick a lane different from previous, if possible
-                if lane_xs:
-                    other_lanes = [x for x in lane_xs if abs(x - old_x) > 1e-3]
-                    if other_lanes:
-                        v.position[0] = random.choice(other_lanes)
-                    else:
-                        v.position[0] = old_x  # only one lane
-
-                # respawn just above the top with tiny random offset
-                v.position[1] = (
-                    -half_height
-                    - vehicle.VEHICLE_LENGTH * 0.2
-                    - random.uniform(0.0, vehicle.VEHICLE_LENGTH * 0.2)
-                )
-
-                # fresh, fairly high speed and desired speed
-                v.velocity = np.float32(
-                    random.uniform(
-                        vehicle.MAX_VELOCITY * 0.6,  # start fairly fast
-                        vehicle.MAX_VELOCITY * 0.95,  # just under max
-                    )
-                )
-                if hasattr(v, "desired_speed"):
-                    v.desired_speed = random.uniform(
-                        vehicle.MAX_VELOCITY * 0.85,  # wants to cruise high
-                        vehicle.MAX_VELOCITY,  # up near max speed
-                    )
+    height: float
 
 
 def create_highway(
@@ -74,11 +27,9 @@ def create_highway(
     """
     vehicles: List[vehicle.Vehicle] = []
 
-    # -------- LANE LAYOUT: VERY CLOSE LANES IN CENTER --------
     num_lanes = 4
     road_width = half_window_width * 1.5
 
-    # pack lanes into the central 40% of the window → very close together
     center_width = road_width * 0.4
     margin = (road_width - center_width) / 2.0
     usable_width = max(center_width, 1.0)
@@ -102,7 +53,7 @@ def create_highway(
         y_pos = random.uniform(-half_height, half_height)
         position = np.array([x_pos, y_pos], dtype=np.float32)
 
-        max_velocity = np.float32(random.uniform(90.0, 110.0))
+        max_velocity = np.float32(random.uniform(140.0, 180.0))
         # start fairly fast, want to cruise near max speed
         init_velocity = random.uniform(
             max_velocity * 0.6,
