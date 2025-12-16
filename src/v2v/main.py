@@ -98,8 +98,8 @@ def main() -> None:
             "vehicles": len(road.vehicles),
             "bsm_rate": 10,
             "cwm_count": cwm_count,
-            "latency": 0.0,
-            "packet_loss": 0.0,
+            "latency": 30,
+            "packet_loss": 10,
             "vehicle_states": vehicle_states,
         }
 

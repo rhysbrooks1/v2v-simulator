@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from messages import BSM, CWM
 import numpy as np
 import math
+import random
 
 MAX_ACCEL = 50.0
 MAX_DECEL = -30.0
@@ -28,10 +29,10 @@ class Vehicle:
     position: np.ndarray
 
     bsm_phase: float = 0.0
-    received_bsms: list[BSM] = dataclasses.field(default_factory=list)
+    bsms: list[(BSM, float)] = dataclasses.field(default_factory=list)
 
     cwm_phase: float = 0.0
-    received_cwms: list[CWM] = dataclasses.field(default_factory=list)
+    cwms: list[(CWM, float)] = dataclasses.field(default_factory=list)
 
     def should_emit_bsm(self, phase_increment):
         self.bsm_phase += phase_increment
@@ -56,68 +57,85 @@ class Vehicle:
             return 0.0
 
         for v in vehicles:
-            remove = []
-            for i, bsm in enumerate(v.received_bsms):
-                if bsm.sender == self.vid:
-                    remove.append(i)
-            for i in reversed(remove):
-                del v.received_bsms[i]
-
-        for v in vehicles:
             if v.vid == self.vid:
                 continue
             if v.position[0] != self.position[0]:
                 continue
             if dist(self.position, v.position) <= range:
-                v.received_bsms.append(
-                    BSM(
-                        sender=self.vid,
-                        x=self.position[0],
-                        y=self.position[1],
-                        speed=self.velocity,
+                # 10% packet loss
+                if random.uniform(0.0, 1.0) > 0.1:
+                    v.bsms.append(
+                        (
+                            BSM(
+                                sender=self.vid,
+                                x=self.position[0],
+                                y=self.position[1],
+                                speed=self.velocity,
+                            ),
+                            # 30ms of latency
+                            -30.0 / 1000.0,
+                        )
                     )
-                )
 
         return range
 
     def emit_cwms(self, dt, vehicles):
-        range = VEHICLE_LENGTH * 1.2
+        cwm_range = VEHICLE_LENGTH * 1.2
+
+        remove = []
+        for i in range(len(self.bsms)):
+            msg, lifetime = self.bsms[i]
+            if lifetime > 100.0 / 1000.0:
+                remove.append(i)
+            self.bsms[i] = (msg, lifetime + dt)
+
+        for i in reversed(remove):
+            del self.bsms[i]
 
         if not self.should_emit_cwm(100.0 * dt):
             return 0.0
 
-        for v in vehicles:
-            remove = []
-            for i, cwm in enumerate(v.received_cwms):
-                if cwm.sender == self.vid:
-                    remove.append(i)
-            for i in reversed(remove):
-                del v.received_cwms[i]
-
-
         emitted = False
 
-        for bsm in self.received_bsms:
+        for i, (bsm, lifetime) in enumerate(self.bsms):
+            if lifetime < 0.0:
+                continue
+
             if (
                 bsm.y < self.position[1]
-                and dist(self.position, [bsm.x, bsm.y]) <= range
+                and dist(self.position, [bsm.x, bsm.y]) <= cwm_range
             ):
                 for v in vehicles:
                     if v.vid == bsm.sender:
                         emitted = True
-                        v.received_cwms.append(
-                            CWM(
-                                sender=self.vid,
-                                ttc=1.0,
+                        v.cwms.append(
+                            (
+                                CWM(
+                                    sender=self.vid,
+                                    ttc=1.0,
+                                ),
+                                # 30ms of latency
+                                -30.0 / 1000.0,
                             )
                         )
+
         if emitted:
-            return range
+            return cwm_range
         else:
             return 0.0
 
     def update(self, dt):
-        if len(self.received_cwms) > 0:
+        remove = []
+        for i in range(len(self.cwms)):
+            msg, lifetime = self.cwms[i]
+            if lifetime > 100.0 / 1000.0:
+                remove.append(i)
+            self.cwms[i] = (msg, lifetime + dt)
+
+        for i in reversed(remove):
+            del self.cwms[i]
+
+        if len(self.cwms) > 0:
             self.acceleration = MAX_DECEL
         else:
             self.acceleration = MAX_ACCEL
