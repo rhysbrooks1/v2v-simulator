@@ -7,7 +7,7 @@ text_renderer = None  # global renderer
 ### MOVE TEXT BOX ###
 DEFAULT_FONT_SIZE = 12
 MOVE_HORIZONTALLY = 125
-MOVE_VERTICALLY = 150
+MOVE_VERTICALLY = 20
 
 
 def init_text_renderer(window_width, window_height):

@@ -1,4 +1,5 @@
 import math
+import argparse
 
 import numpy as np
 import pygame as pg
@@ -12,13 +13,13 @@ from line import LineRenderer
 from ui_statistics import draw_stats_panel
 
 
-def dist(src, target) -> float:
+def dist(src, target):
     dx = float(src[0]) - float(target[0])
     dy = float(src[1]) - float(target[1])
     return math.sqrt(dx * dx + dy * dy)
 
 
-def main() -> None:
+def main(args):
     window_width = 1280
     window_height = 720
     dt = 0.0
@@ -28,7 +29,7 @@ def main() -> None:
     running = True
 
     road = highway.create_highway(
-        num_vehicles=12,
+        num_vehicles=int(args.vehicle_count),
         height=window_height,
         half_window_width=window_width / 2.0,
     )
@@ -49,6 +50,8 @@ def main() -> None:
     emitter_renderer = EmitterRenderer(window_width, window_height)
     sprite, car_w, car_h = load_sprite("cars/manual.png")
 
+    vehicle_scale = float(args.vehicle_scale)
+
     while running:
         for event in pg.event.get():
             if event.type == pg.QUIT:
@@ -61,7 +64,7 @@ def main() -> None:
 
         # for each vehicle, emit a BSM message to neighbors
         for v in road.vehicles:
-            scale = v.emit_bsms(dt, road.vehicles)
+            scale = v.emit_bsms(dt, road.vehicles, args.latency, args.packet_loss)
             if scale != 0.0:
                 emitter_renderer.add_instance(
                     scale, [0.4, 0.4, 0.4], v.position[0], v.position[1]
@@ -70,7 +73,7 @@ def main() -> None:
         # for each vehicle, emit a CWM message to neighbors when a collision
         # is imminent
         for v in road.vehicles:
-            scale = v.emit_cwms(dt, road.vehicles)
+            scale = v.emit_cwms(dt, road.vehicles, vehicle_scale, args.latency)
             if scale != 0.0:
                 cwm_count += 1
                 emitter_renderer.add_instance(
@@ -98,8 +101,8 @@ def main() -> None:
             "vehicles": len(road.vehicles),
             "bsm_rate": 10,
             "cwm_count": cwm_count,
-            "latency": 30,
-            "packet_loss": 10,
+            "latency": args.latency,
+            "packet_loss": float(args.packet_loss) * 100.0,
             "vehicle_states": vehicle_states,
         }
 
@@ -124,14 +127,15 @@ def main() -> None:
                 car_w,
                 car_h,
                 translation=veh_pos3,
-                scale=[2.0, 2.0],
+                scale=[2.0 * vehicle_scale, 2.0 * vehicle_scale],
             )
 
             for j, other in enumerate(road.vehicles):
                 if i != j and (i, j) not in connected_set:
                     if (
                         veh.position[0] != other.position[0]
-                        or dist(veh.position, other.position) > 200.0
+                        or dist(veh.position, other.position)
+                        > vehicle.BSM_RANGE * vehicle_scale
                     ):
                         continue
 
@@ -162,7 +166,7 @@ def main() -> None:
                     y0,
                     0.0,
                     x0,
-                    y0 + vy * 0.5,
+                    y0 + vy * 0.5 * vehicle_scale,
                     0.0,
                 ],
             )
@@ -180,4 +184,22 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(
+        prog="main.py",
+        description="Simulates a highway scenario where fully autonomous vehicles \
+                communicate with each other to avoid collisions",
+    )
+    parser.add_argument("-v", "--vehicle-count", default=12)
+    parser.add_argument(
+        "-s",
+        "--vehicle-scale",
+        default=1.0,
+    )
+
+    parser.add_argument("-l", "--latency", default=30, help="packet latency in ms")
+    parser.add_argument(
+        "-p", "--packet-loss", default=0.1, help="percentage of packets lost"
+    )
+
+    args = parser.parse_args()
+    main(args)

@@ -1,17 +1,43 @@
 # v2v-simulator
-Project Overview:
-This simulator models V2V communication networks for vehicles broadcasting Basic Safety Messages (BSM) and Collision Warning Messages (CWM) to prevent accidents. 
-THe system includes realistic vehicle dynamics, network protocol simulation and a real-time visualization.
-Core Question: How do mobile ad-hoc networks (MANETs) handle ultra-low latency requirements when network topology changes every second at highway speeds?
 
-Dependencies are listed in requirements.txt.
+## Features
+- Configurable number of vehicles in a highway scenario
+- Configurable packet loss and latency
+- Vehicle physics with acceleration, velocity, and position
+- Collosion avoidance
+- OpenGL renderer for visualizing the highway scenario
 
-Core Simulation:
-10 vehicles in highway scenarios
-Realistic vehicle dynamics with accelerations and deceleration
-Collosion detection and avoidance using calculations
+## Communication Protocol
+- Basic Safety Messages (BSM): Position/velocity broadcasts every 100ms 
+- Collision Warning Messages (CWM): High-priority emergency alerts
+- Message prioritization: CWM messages transmit within 5ms, and never dropped
 
-Communication Protocol:
-Basic Safety Messages (BSM): Position/speed/ broadcasts every 100ms 
-Collision Warning Messages (CWM): High-priority emergency alerts
-Message prioritization: CWM messages transmit within 5ms, and never dropped
+## Usage
+```console
+$ python3 -m venv .venv
+$ source .venv/bin/activate
+$ pip install -r requirements.txt
+$ python3 src/v2v/main.py -h
+```
+
+```console
+usage: main.py [-h] [-v VEHICLE_COUNT] [-s VEHICLE_SCALE] [-l LATENCY] [-p PACKET_LOSS]
+
+Simulates a highway scenario where fully autonomous vehicles communicate with each other to avoid collisions
+
+options:
+  -h, --help            show this help message and exit
+  -v, --vehicle-count VEHICLE_COUNT
+  -s, --vehicle-scale VEHICLE_SCALE
+  -l, --latency LATENCY
+                        packet latency in ms
+  -p, --packet-loss PACKET_LOSS
+                        percentage of packets lost
+```
+
+## Scenarios
+- Default: python3 src/v2v/main.py
+- Chaotic, 50% packet loss: python3 src/v2v/main.py -v 20 -s 0.5 -p 0.5
+  - Demonstrates that the network protocol can handle a large amount of BSM packet loss without causing collisions.
+- Broken, 300ms latency: python3 src/v2v/main.py -v 20 -s 0.5 -l 300
+  - Demonstrates that the network protocol relies on low latency, less than 300ms, in order to effectively avoid collisions.

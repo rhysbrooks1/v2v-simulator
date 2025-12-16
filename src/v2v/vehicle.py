@@ -10,6 +10,8 @@ MAX_DECEL = -70.0
 VEHICLE_LENGTH = 260.0
 VEHICLE_WIDTH = 130.0
 
+BSM_RANGE = 200.0
+
 
 def dist(src, target) -> float:
     dx = float(src[0]) - float(target[0])
@@ -50,9 +52,7 @@ class Vehicle:
         else:
             return False
 
-    def emit_bsms(self, dt, vehicles):
-        range = 200.0
-
+    def emit_bsms(self, dt, vehicles, latency_ms, packet_loss):
         if not self.should_emit_bsm(10.0 * dt):
             return 0.0
 
@@ -61,9 +61,9 @@ class Vehicle:
                 continue
             if v.position[0] != self.position[0]:
                 continue
-            if dist(self.position, v.position) <= range:
+            if dist(self.position, v.position) <= BSM_RANGE:
                 # 10% packet loss
-                if random.uniform(0.0, 1.0) > 0.1:
+                if random.uniform(0.0, 1.0) > float(packet_loss):
                     v.bsms.append(
                         (
                             BSM(
@@ -72,15 +72,14 @@ class Vehicle:
                                 y=self.position[1],
                                 speed=self.velocity,
                             ),
-                            # 30ms of latency
-                            -30.0 / 1000.0,
+                            -float(latency_ms) / 1000.0,
                         )
                     )
 
-        return range
+        return BSM_RANGE
 
-    def emit_cwms(self, dt, vehicles):
-        cwm_range = VEHICLE_LENGTH * 1.2
+    def emit_cwms(self, dt, vehicles, vehicle_scale, latency_ms):
+        cwm_range = VEHICLE_LENGTH * 1.2 * vehicle_scale
 
         remove = []
         for i in range(len(self.bsms)):
@@ -114,8 +113,7 @@ class Vehicle:
                                     sender=self.vid,
                                     ttc=1.0,
                                 ),
-                                # 30ms of latency
-                                -30.0 / 1000.0,
+                                -float(latency_ms) / 1000.0,
                             )
                         )
 
