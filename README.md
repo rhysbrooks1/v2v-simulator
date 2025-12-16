@@ -22,7 +22,5 @@ $ python3 src/v2v/main.py -h
 
 ## Scenarios
 - Default: `python3 src/v2v/main.py`
-- Chaotic, 50% packet loss: `python3 src/v2v/main.py -v 20 -s 0.5 -p 0.5`
-  - Demonstrates that the network protocol can handle a large amount of BSM packet loss without causing collisions.
-- Broken, 300ms latency: `python3 src/v2v/main.py -v 20 -s 0.5 -l 300`
-  - Demonstrates that the network protocol relies on low latency, less than 300ms, in order to effectively avoid collisions.
+- High packet loss: `python3 src/v2v/main.py -s 0.5 -p 0.7`
+- High BSM packet latency: `python3 src/v2v/main.py -s 0.5 -l 300`

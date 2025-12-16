@@ -122,7 +122,7 @@ class Vehicle:
         else:
             return 0.0
 
-    def update(self, dt):
+    def update(self, dt, vehicle_scale):
         remove = []
         for i in range(len(self.cwms)):
             msg, lifetime = self.cwms[i]
@@ -138,7 +138,9 @@ class Vehicle:
         else:
             self.acceleration = MAX_ACCEL
 
-        self.acceleration = min(max(self.acceleration, MAX_DECEL), MAX_ACCEL)
-        self.velocity += self.acceleration * dt
+        self.acceleration = min(
+            max(self.acceleration, MAX_DECEL), MAX_ACCEL
+        )
+        self.velocity += self.acceleration * dt * vehicle_scale
         self.velocity = min(max(self.velocity, 0.0), self.max_velocity)
-        self.position[1] += self.velocity * dt
+        self.position[1] += self.velocity * dt * vehicle_scale

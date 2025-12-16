@@ -82,7 +82,7 @@ def main(args):
 
         # bound the vehicles to the height of the highway
         for v in road.vehicles:
-            v.update(dt)
+            v.update(dt, vehicle_scale)
             if v.position[1] > road.height / 2.0 + vehicle.VEHICLE_LENGTH / 2.0:
                 v.position[1] = -road.height / 2.0 - vehicle.VEHICLE_LENGTH / 2.0
 
