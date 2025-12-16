@@ -31,14 +31,15 @@ class LineRenderer:
         # Makes the ends look nice
         gl.glEnable(gl.GL_LINE_SMOOTH)
 
-        vert = shaders.compileShader(VERT_SHADER, gl.GL_VERTEX_SHADER)
-        frag = shaders.compileShader(FRAG_SHADER, gl.GL_FRAGMENT_SHADER)
-        self.sprite_shader = shaders.compileProgram(vert, frag)
-
         self.vao = gl.glGenVertexArrays(1)
         self.vbo = gl.glGenBuffers(1)
 
         gl.glBindVertexArray(self.vao)
+
+        vert = shaders.compileShader(VERT_SHADER, gl.GL_VERTEX_SHADER)
+        frag = shaders.compileShader(FRAG_SHADER, gl.GL_FRAGMENT_SHADER)
+        self.sprite_shader = shaders.compileProgram(vert, frag)
+
         gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.vbo)
         gl.glVertexAttribPointer(
             0, 3, gl.GL_FLOAT, gl.GL_FALSE, 3 * 4, ctypes.c_void_p(0)
@@ -99,7 +100,8 @@ class LineRenderer:
             color[3],
         )
 
-        gl.glLineWidth(3.0)
+        # macos doesn't support line width, so unfortunately the lines must be skinny
+        # gl.glLineWidth(3)
         gl.glDrawArrays(gl.GL_LINES, 0, len(points) // 3)
 
     def render_arrows(

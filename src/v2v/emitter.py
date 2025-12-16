@@ -53,12 +53,13 @@ class EmitterRenderer:
         self.expansion_speed = expansion_speed
         self.fade_speed = fade_speed
 
+        self.vao = gl.glGenVertexArrays(1)
+        self.vbo = gl.glGenBuffers(1)
+        gl.glBindVertexArray(self.vao)
+
         vert = shaders.compileShader(VERT_SHADER, gl.GL_VERTEX_SHADER)
         frag = shaders.compileShader(FRAG_SHADER, gl.GL_FRAGMENT_SHADER)
         self.shader_program = shaders.compileProgram(vert, frag)
-
-        self.vao = gl.glGenVertexArrays(1)
-        self.vbo = gl.glGenBuffers(1)
 
         vertices = []
         for i in range(self.segments):
@@ -68,7 +69,6 @@ class EmitterRenderer:
             vertices.extend([x * 0.5, y * 0.5])
 
         vertex_data = np.array(vertices, dtype=np.float32)
-        gl.glBindVertexArray(self.vao)
         gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.vbo)
         gl.glBufferData(
             gl.GL_ARRAY_BUFFER, vertex_data.nbytes, vertex_data, gl.GL_STATIC_DRAW

@@ -90,6 +90,12 @@ class SpriteRenderer:
         ], dtype=np.uint32)
         # fmt: on
 
+        self.vao = gl.glGenVertexArrays(1)
+        vbo = gl.glGenBuffers(1)
+        ebo = gl.glGenBuffers(1)
+
+        gl.glBindVertexArray(self.vao)
+
         vert = shaders.compileShader(VERT_SHADER, gl.GL_VERTEX_SHADER)
         frag = shaders.compileShader(FRAG_SHADER, gl.GL_FRAGMENT_SHADER)
         self.sprite_shader = shaders.compileProgram(vert, frag)
@@ -97,12 +103,7 @@ class SpriteRenderer:
         gl.glEnable(gl.GL_BLEND)
         gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
 
-        self.vao = gl.glGenVertexArrays(1)
-        vbo = gl.glGenBuffers(1)
-        ebo = gl.glGenBuffers(1)
-
         # configure buffers
-        gl.glBindVertexArray(self.vao)
         gl.glBindBuffer(gl.GL_ARRAY_BUFFER, vbo)
         gl.glBufferData(
             gl.GL_ARRAY_BUFFER, vertices.nbytes, vertices, gl.GL_STATIC_DRAW
