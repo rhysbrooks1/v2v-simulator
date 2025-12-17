@@ -1,4 +1,9 @@
 # v2v-simulator
+## Team Members and contributions
+- Nic Ball: Built the arrow, line, sprite, and emission effects renderers. Built the original vehicle physics behavior. Added command line argument parsing to parameterize variables.
+- Rhys Brooks: Worked on highway.py (spawning logic), messages.py (CWM and BSM).
+- Rene Hermosillo: Worked on ui_statistics.py and display panel to the screen in main.py.
+- William Ostrum: Worked on collision avoidance and braking for the vehicles in main.py as well as trying to get vehicle speeds to function more fluidly in both vehicle.py and main.py.
 
 ## Features
 - Configurable number of vehicles in a highway scenario
@@ -13,6 +18,8 @@
 - Message prioritization: CWM messages transmit within 5ms, and never dropped
 
 ## Usage
+- -h flag it will give usage information in terminal
+
 ```console
 $ python3 -m venv .venv
 $ source .venv/bin/activate
