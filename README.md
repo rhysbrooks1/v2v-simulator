@@ -24,3 +24,6 @@ $ python3 src/v2v/main.py -h
 - Default: `python3 src/v2v/main.py`
 - High packet loss: `python3 src/v2v/main.py -s 0.5 -p 0.7`
 - High BSM packet latency: `python3 src/v2v/main.py -s 0.5 -l 300`
+
+## Known Problem
+The most significant problem with the project is that vehicles near the edges of the screen do not communicate with each other. Specifically, a vehicle at the top of the screen can not see if a vehicle at the bottom of the screen is stopped. As the number of vehicles increases, the gap between vehicles decreases, meaning that the duration that a vehicle has to react to a stopped vehicle immediately after it moves from the top to the bottom of the screen is smaller. As a result, at around ~20-25 cars you will start to observe vehicles racing over the top of one another. This isn't necessarily a problem with the network protocol and instead a limitation in the engine. As such, we are not concerned about fixing it.

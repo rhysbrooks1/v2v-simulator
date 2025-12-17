@@ -52,6 +52,9 @@ def main(args):
 
     vehicle_scale = float(args.vehicle_scale)
 
+    update_freq = float(args.simulation_speed)
+    update_phase = 0.0
+
     while running:
         for event in pg.event.get():
             if event.type == pg.QUIT:
@@ -62,29 +65,33 @@ def main(args):
 
         cwm_count = 0
 
-        # for each vehicle, emit a BSM message to neighbors
-        for v in road.vehicles:
-            scale = v.emit_bsms(dt, road.vehicles, args.latency, args.packet_loss)
-            if scale != 0.0:
-                emitter_renderer.add_instance(
-                    scale, [0.4, 0.4, 0.4], v.position[0], v.position[1]
-                )
+        update_phase += update_freq
+        while update_phase > 1.0:
+            update_phase -= 1.0
 
-        # for each vehicle, emit a CWM message to neighbors when a collision
-        # is imminent
-        for v in road.vehicles:
-            scale = v.emit_cwms(dt, road.vehicles, vehicle_scale, args.latency)
-            if scale != 0.0:
-                cwm_count += 1
-                emitter_renderer.add_instance(
-                    scale, [0.6, 0.0, 0.0], v.position[0], v.position[1]
-                )
+            # for each vehicle, emit a BSM message to neighbors
+            for v in road.vehicles:
+                scale = v.emit_bsms(dt, road.vehicles, args.latency, args.packet_loss)
+                if scale != 0.0:
+                    emitter_renderer.add_instance(
+                        scale, [0.4, 0.4, 0.4], v.position[0], v.position[1]
+                    )
 
-        # bound the vehicles to the height of the highway
-        for v in road.vehicles:
-            v.update(dt, vehicle_scale)
-            if v.position[1] > road.height / 2.0 + vehicle.VEHICLE_LENGTH / 2.0:
-                v.position[1] = -road.height / 2.0 - vehicle.VEHICLE_LENGTH / 2.0
+            # for each vehicle, emit a CWM message to neighbors when a collision
+            # is imminent
+            for v in road.vehicles:
+                scale = v.emit_cwms(dt, road.vehicles, vehicle_scale, args.latency)
+                if scale != 0.0:
+                    cwm_count += 1
+                    emitter_renderer.add_instance(
+                        scale, [0.6, 0.0, 0.0], v.position[0], v.position[1]
+                    )
+
+            # bound the vehicles to the height of the highway
+            for v in road.vehicles:
+                v.update(dt, vehicle_scale)
+                if v.position[1] > road.height / 2.0 + vehicle.VEHICLE_LENGTH / 2.0:
+                    v.position[1] = -road.height / 2.0 - vehicle.VEHICLE_LENGTH / 2.0
 
         vehicle_states = []
         for v in road.vehicles:
@@ -189,6 +196,13 @@ if __name__ == "__main__":
         description="Simulates a highway scenario where fully autonomous vehicles \
                 communicate with each other to avoid collisions",
     )
+    parser.add_argument(
+        "-f",
+        "--simulation-speed",
+        default=1.0,
+        help="refers to the number of simulation steps that occur each frame",
+    )
+
     parser.add_argument("-v", "--vehicle-count", default=12)
     parser.add_argument(
         "-s",
